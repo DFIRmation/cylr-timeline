@@ -491,7 +491,7 @@ def parse_bam(root: Path) -> List[Dict]:
                             try:
                                 for val in sid_key.iter_values():
                                     exe = val.name
-                                    if "\\" not in exe:
+                                    if exe in ("Version", "SequenceNumber"):
                                         continue
                                     raw = val.value
                                     if not isinstance(raw, bytes) or len(raw) < 8:
@@ -603,10 +603,13 @@ def parse_userassist(root: Path) -> List[Dict]:
                     for val in count_key.iter_values():
                         name      = val.name.translate(ROT13)
                         raw       = val.value
-                        if not isinstance(raw, bytes) or len(raw) < 72:
+                        if not isinstance(raw, bytes) or len(raw) < 16:
                             continue
-                        run_count = struct.unpack_from("<I", raw, 4)[0]
-                        ft        = struct.unpack_from("<Q", raw, 60)[0]
+                        run_count = struct.unpack_from("<I", raw, 4)[0] if len(raw) >= 8 else 0
+                        ft_offset = 60 if len(raw) >= 68 else len(raw) - 8
+                        if ft_offset < 0:
+                            continue
+                        ft = struct.unpack_from("<Q", raw, ft_offset)[0]
                         if ft == 0:
                             continue
                         dt_utc = filetime_to_dt(ft)
